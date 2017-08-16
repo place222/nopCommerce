@@ -1,6 +1,5 @@
 using System;
 using System.Linq;
-using Nop.Core;
 using Nop.Core.Plugins;
 using Nop.Services.Configuration;
 using Nop.Services.Discounts;
@@ -25,7 +24,7 @@ namespace Nop.Plugin.DiscountRules.CustomerRoles
         public DiscountRequirementValidationResult CheckRequirement(DiscountRequirementValidationRequest request)
         {
             if (request == null)
-                throw new ArgumentNullException("request");
+                throw new ArgumentNullException(nameof(request));
 
             //invalid by default
             var result = new DiscountRequirementValidationResult();
@@ -33,7 +32,8 @@ namespace Nop.Plugin.DiscountRules.CustomerRoles
             if (request.Customer == null)
                 return result;
 
-            var restrictedToCustomerRoleId = _settingService.GetSettingByKey<int>(string.Format("DiscountRequirement.MustBeAssignedToCustomerRole-{0}", request.DiscountRequirementId));
+            var restrictedToCustomerRoleId = _settingService.GetSettingByKey<int>(
+                $"DiscountRequirement.MustBeAssignedToCustomerRole-{request.DiscountRequirementId}");
             if (restrictedToCustomerRoleId == 0)
                 return result;
 
@@ -59,7 +59,7 @@ namespace Nop.Plugin.DiscountRules.CustomerRoles
             //configured in RouteProvider.cs
             string result = "Plugins/DiscountRulesCustomerRoles/Configure/?discountId=" + discountId;
             if (discountRequirementId.HasValue)
-                result += string.Format("&discountRequirementId={0}", discountRequirementId.Value);
+                result += $"&discountRequirementId={discountRequirementId.Value}";
             return result;
         }
 

@@ -1,4 +1,5 @@
-﻿using System;
+﻿#if NET451
+using System;
 using Nop.Web.Controllers;
 using NUnit.Framework;
 
@@ -166,7 +167,7 @@ namespace Nop.Web.MVC.Tests.Public.Infrastructure
             "~/contactvendor/1".ShouldMapTo<CommonController>(c => c.ContactVendor(1));
             "~/contactus".ShouldMapTo<CommonController>(c => c.ContactUs());
             "~/sitemap".ShouldMapTo<CommonController>(c => c.Sitemap());
-            "~/sitemap.xml".ShouldMapTo<CommonController>(c => c.SitemapXml());
+            "~/sitemap.xml".ShouldMapTo<CommonController>(c => c.SitemapXml(null));
         }
 
         [Test]
@@ -205,3 +206,4 @@ namespace Nop.Web.MVC.Tests.Public.Infrastructure
         //}
     }
 }
+#endif

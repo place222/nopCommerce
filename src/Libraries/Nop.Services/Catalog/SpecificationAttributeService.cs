@@ -105,7 +105,7 @@ namespace Nop.Services.Catalog
         public virtual void DeleteSpecificationAttribute(SpecificationAttribute specificationAttribute)
         {
             if (specificationAttribute == null)
-                throw new ArgumentNullException("specificationAttribute");
+                throw new ArgumentNullException(nameof(specificationAttribute));
 
             _specificationAttributeRepository.Delete(specificationAttribute);
 
@@ -122,7 +122,7 @@ namespace Nop.Services.Catalog
         public virtual void InsertSpecificationAttribute(SpecificationAttribute specificationAttribute)
         {
             if (specificationAttribute == null)
-                throw new ArgumentNullException("specificationAttribute");
+                throw new ArgumentNullException(nameof(specificationAttribute));
 
             _specificationAttributeRepository.Insert(specificationAttribute);
 
@@ -139,7 +139,7 @@ namespace Nop.Services.Catalog
         public virtual void UpdateSpecificationAttribute(SpecificationAttribute specificationAttribute)
         {
             if (specificationAttribute == null)
-                throw new ArgumentNullException("specificationAttribute");
+                throw new ArgumentNullException(nameof(specificationAttribute));
 
             _specificationAttributeRepository.Update(specificationAttribute);
 
@@ -200,7 +200,7 @@ namespace Nop.Services.Catalog
         public virtual IList<SpecificationAttributeOption> GetSpecificationAttributeOptionsBySpecificationAttribute(int specificationAttributeId)
         {
             var query = from sao in _specificationAttributeOptionRepository.Table
-                        orderby sao.DisplayOrder
+                        orderby sao.DisplayOrder, sao.Id
                         where sao.SpecificationAttributeId == specificationAttributeId
                         select sao;
             var specificationAttributeOptions = query.ToList();
@@ -214,7 +214,7 @@ namespace Nop.Services.Catalog
         public virtual void DeleteSpecificationAttributeOption(SpecificationAttributeOption specificationAttributeOption)
         {
             if (specificationAttributeOption == null)
-                throw new ArgumentNullException("specificationAttributeOption");
+                throw new ArgumentNullException(nameof(specificationAttributeOption));
 
             _specificationAttributeOptionRepository.Delete(specificationAttributeOption);
 
@@ -231,7 +231,7 @@ namespace Nop.Services.Catalog
         public virtual void InsertSpecificationAttributeOption(SpecificationAttributeOption specificationAttributeOption)
         {
             if (specificationAttributeOption == null)
-                throw new ArgumentNullException("specificationAttributeOption");
+                throw new ArgumentNullException(nameof(specificationAttributeOption));
 
             _specificationAttributeOptionRepository.Insert(specificationAttributeOption);
 
@@ -248,7 +248,7 @@ namespace Nop.Services.Catalog
         public virtual void UpdateSpecificationAttributeOption(SpecificationAttributeOption specificationAttributeOption)
         {
             if (specificationAttributeOption == null)
-                throw new ArgumentNullException("specificationAttributeOption");
+                throw new ArgumentNullException(nameof(specificationAttributeOption));
 
             _specificationAttributeOptionRepository.Update(specificationAttributeOption);
 
@@ -269,7 +269,7 @@ namespace Nop.Services.Catalog
         public virtual void DeleteProductSpecificationAttribute(ProductSpecificationAttribute productSpecificationAttribute)
         {
             if (productSpecificationAttribute == null)
-                throw new ArgumentNullException("productSpecificationAttribute");
+                throw new ArgumentNullException(nameof(productSpecificationAttribute));
 
             _productSpecificationAttributeRepository.Delete(productSpecificationAttribute);
 
@@ -305,7 +305,7 @@ namespace Nop.Services.Catalog
                     query = query.Where(psa => psa.AllowFiltering == allowFiltering.Value);
                 if (showOnProductPage.HasValue)
                     query = query.Where(psa => psa.ShowOnProductPage == showOnProductPage.Value);
-                query = query.OrderBy(psa => psa.DisplayOrder);
+                query = query.OrderBy(psa => psa.DisplayOrder).ThenBy(psa => psa.Id);
 
                 var productSpecificationAttributes = query.ToList();
                 return productSpecificationAttributes;
@@ -332,7 +332,7 @@ namespace Nop.Services.Catalog
         public virtual void InsertProductSpecificationAttribute(ProductSpecificationAttribute productSpecificationAttribute)
         {
             if (productSpecificationAttribute == null)
-                throw new ArgumentNullException("productSpecificationAttribute");
+                throw new ArgumentNullException(nameof(productSpecificationAttribute));
 
             _productSpecificationAttributeRepository.Insert(productSpecificationAttribute);
 
@@ -349,7 +349,7 @@ namespace Nop.Services.Catalog
         public virtual void UpdateProductSpecificationAttribute(ProductSpecificationAttribute productSpecificationAttribute)
         {
             if (productSpecificationAttribute == null)
-                throw new ArgumentNullException("productSpecificationAttribute");
+                throw new ArgumentNullException(nameof(productSpecificationAttribute));
 
             _productSpecificationAttributeRepository.Update(productSpecificationAttribute);
 

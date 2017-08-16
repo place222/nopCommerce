@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Discounts;
 using Nop.Plugin.DiscountRules.HasOneProduct.Models;
+using Nop.Services;
 using Nop.Services.Catalog;
 using Nop.Services.Configuration;
 using Nop.Services.Discounts;
@@ -13,14 +15,14 @@ using Nop.Services.Localization;
 using Nop.Services.Security;
 using Nop.Services.Stores;
 using Nop.Services.Vendors;
-using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
 using Nop.Web.Framework.Kendoui;
+using Nop.Web.Framework.Mvc.Filters;
 using Nop.Web.Framework.Security;
 
 namespace Nop.Plugin.DiscountRules.HasOneProduct.Controllers
 {
-    [AdminAuthorize]
+    [AuthorizeAdmin]
     public class DiscountRulesHasOneProductController : BasePluginController
     {
         private readonly IDiscountService _discountService;
@@ -57,7 +59,7 @@ namespace Nop.Plugin.DiscountRules.HasOneProduct.Controllers
             this._productService = productService;
         }
 
-        public ActionResult Configure(int discountId, int? discountRequirementId)
+        public IActionResult Configure(int discountId, int? discountRequirementId)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageDiscounts))
                 return Content("Access denied");
@@ -73,7 +75,8 @@ namespace Nop.Plugin.DiscountRules.HasOneProduct.Controllers
                     return Content("Failed to load requirement.");
             }
 
-            var restrictedProductIds = _settingService.GetSettingByKey<string>(string.Format("DiscountRequirement.RestrictedProductIds-{0}", discountRequirementId.HasValue ? discountRequirementId.Value : 0));
+            var restrictedProductIds = _settingService.GetSettingByKey<string>(
+                $"DiscountRequirement.RestrictedProductIds-{(discountRequirementId.HasValue ? discountRequirementId.Value : 0)}");
 
             var model = new RequirementModel();
             model.RequirementId = discountRequirementId.HasValue ? discountRequirementId.Value : 0;
@@ -81,9 +84,10 @@ namespace Nop.Plugin.DiscountRules.HasOneProduct.Controllers
             model.Products = restrictedProductIds;
 
             //add a prefix
-            ViewData.TemplateInfo.HtmlFieldPrefix = string.Format("DiscountRulesHasOneProduct{0}", discountRequirementId.HasValue ? discountRequirementId.Value.ToString() : "0");
+            ViewData.TemplateInfo.HtmlFieldPrefix =
+                $"DiscountRulesHasOneProduct{(discountRequirementId.HasValue ? discountRequirementId.Value.ToString() : "0")}";
 
-            return View("~/Plugins/DiscountRules.HasOneProduct/Views/DiscountRulesHasOneProduct/Configure.cshtml", model);
+            return View("~/Plugins/DiscountRules.HasOneProduct/Views/Configure.cshtml", model);
         }
 
         [HttpPost]
@@ -104,7 +108,7 @@ namespace Nop.Plugin.DiscountRules.HasOneProduct.Controllers
             if (discountRequirement != null)
             {
                 //update existing rule
-                _settingService.SetSetting(string.Format("DiscountRequirement.RestrictedProductIds-{0}", discountRequirement.Id), productIds);
+                _settingService.SetSetting($"DiscountRequirement.RestrictedProductIds-{discountRequirement.Id}", productIds);
             }
             else
             {
@@ -116,12 +120,12 @@ namespace Nop.Plugin.DiscountRules.HasOneProduct.Controllers
                 discount.DiscountRequirements.Add(discountRequirement);
                 _discountService.UpdateDiscount(discount);
 
-                _settingService.SetSetting(string.Format("DiscountRequirement.RestrictedProductIds-{0}", discountRequirement.Id), productIds);
+                _settingService.SetSetting($"DiscountRequirement.RestrictedProductIds-{discountRequirement.Id}", productIds);
             }
-            return Json(new { Result = true, NewRequirementId = discountRequirement.Id }, JsonRequestBehavior.AllowGet);
+            return Json(new { Result = true, NewRequirementId = discountRequirement.Id });
         }
 
-        public ActionResult ProductAddPopup(string btnId, string productIdsInput)
+        public ActionResult ProductAddPopup()
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageProducts))
                 return Content("Access denied");
@@ -154,12 +158,8 @@ namespace Nop.Plugin.DiscountRules.HasOneProduct.Controllers
             //product types
             model.AvailableProductTypes = ProductType.SimpleProduct.ToSelectList(false).ToList();
             model.AvailableProductTypes.Insert(0, new SelectListItem { Text = _localizationService.GetResource("Admin.Common.All"), Value = "0" });
-
-
-            ViewBag.productIdsInput = productIdsInput;
-            ViewBag.btnId = btnId;
-
-            return View("~/Plugins/DiscountRules.HasOneProduct/Views/DiscountRulesHasOneProduct/ProductAddPopup.cshtml", model);
+            
+            return View("~/Plugins/DiscountRules.HasOneProduct/Views/ProductAddPopup.cshtml", model);
         }
 
         [HttpPost]
@@ -167,7 +167,7 @@ namespace Nop.Plugin.DiscountRules.HasOneProduct.Controllers
         public ActionResult ProductAddPopupList(DataSourceRequest command, RequirementModel.AddProductModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageProducts))
-                return Content("Access denied");
+                return ErrorForKendoGridJson("Access denied");
 
             //a vendor should have access only to his products
             if (_workContext.CurrentVendor != null)
@@ -199,7 +199,6 @@ namespace Nop.Plugin.DiscountRules.HasOneProduct.Controllers
         }
 
         [HttpPost]
-        [ValidateInput(false)]
         [AdminAntiForgery]
         public ActionResult LoadProductFriendlyNames(string productIds)
         {
@@ -230,8 +229,7 @@ namespace Nop.Plugin.DiscountRules.HasOneProduct.Controllers
                     if (str2.Contains(":"))
                         str2 = str2.Substring(0, str2.IndexOf(":"));
 
-                    int tmp1;
-                    if (int.TryParse(str2, out tmp1))
+                    if (int.TryParse(str2, out int tmp1))
                         ids.Add(tmp1);
                 }
 

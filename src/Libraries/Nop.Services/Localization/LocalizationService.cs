@@ -51,7 +51,7 @@ namespace Nop.Services.Localization
         private readonly IWorkContext _workContext;
         private readonly ILogger _logger;
         private readonly ILanguageService _languageService;
-        private readonly ICacheManager _cacheManager;
+        private readonly IStaticCacheManager _cacheManager;
         private readonly IDataProvider _dataProvider;
         private readonly IDbContext _dbContext;
         private readonly CommonSettings _commonSettings;
@@ -65,7 +65,7 @@ namespace Nop.Services.Localization
         /// <summary>
         /// Ctor
         /// </summary>
-        /// <param name="cacheManager">Cache manager</param>
+        /// <param name="cacheManager">Static cache manager</param>
         /// <param name="logger">Logger</param>
         /// <param name="workContext">Work context</param>
         /// <param name="lsrRepository">Locale string resource repository</param>
@@ -75,12 +75,16 @@ namespace Nop.Services.Localization
         /// <param name="commonSettings">Common settings</param>
         /// <param name="localizationSettings">Localization settings</param>
         /// <param name="eventPublisher">Event published</param>
-        public LocalizationService(ICacheManager cacheManager,
-            ILogger logger, IWorkContext workContext,
+        public LocalizationService(IStaticCacheManager cacheManager,
+            ILogger logger,
+            IWorkContext workContext,
             IRepository<LocaleStringResource> lsrRepository, 
             ILanguageService languageService,
-            IDataProvider dataProvider, IDbContext dbContext, CommonSettings commonSettings,
-            LocalizationSettings localizationSettings, IEventPublisher eventPublisher)
+            IDataProvider dataProvider,
+            IDbContext dbContext,
+            CommonSettings commonSettings,
+            LocalizationSettings localizationSettings, 
+            IEventPublisher eventPublisher)
         {
             this._cacheManager = cacheManager;
             this._logger = logger;
@@ -105,7 +109,7 @@ namespace Nop.Services.Localization
         public virtual void DeleteLocaleStringResource(LocaleStringResource localeStringResource)
         {
             if (localeStringResource == null)
-                throw new ArgumentNullException("localeStringResource");
+                throw new ArgumentNullException(nameof(localeStringResource));
 
             _lsrRepository.Delete(localeStringResource);
 
@@ -159,7 +163,7 @@ namespace Nop.Services.Localization
             var localeStringResource = query.FirstOrDefault();
 
             if (localeStringResource == null && logIfNotFound)
-                _logger.Warning(string.Format("Resource string ({0}) not found. Language ID = {1}", resourceName, languageId));
+                _logger.Warning($"Resource string ({resourceName}) not found. Language ID = {languageId}");
             return localeStringResource;
         }
 
@@ -185,7 +189,7 @@ namespace Nop.Services.Localization
         public virtual void InsertLocaleStringResource(LocaleStringResource localeStringResource)
         {
             if (localeStringResource == null)
-                throw new ArgumentNullException("localeStringResource");
+                throw new ArgumentNullException(nameof(localeStringResource));
             
             _lsrRepository.Insert(localeStringResource);
 
@@ -203,7 +207,7 @@ namespace Nop.Services.Localization
         public virtual void UpdateLocaleStringResource(LocaleStringResource localeStringResource)
         {
             if (localeStringResource == null)
-                throw new ArgumentNullException("localeStringResource");
+                throw new ArgumentNullException(nameof(localeStringResource));
 
             _lsrRepository.Update(localeStringResource);
 
@@ -300,7 +304,7 @@ namespace Nop.Services.Localization
             if (String.IsNullOrEmpty(result))
             {
                 if (logIfNotFound)
-                    _logger.Warning(string.Format("Resource string ({0}) is not found. Language ID = {1}", resourceKey, languageId));
+                    _logger.Warning($"Resource string ({resourceKey}) is not found. Language ID = {languageId}");
                 
                 if (!String.IsNullOrEmpty(defaultValue))
                 {
@@ -316,20 +320,21 @@ namespace Nop.Services.Localization
         }
 
         /// <summary>
-        /// Export language resources to xml
+        /// Export language resources to XML
         /// </summary>
         /// <param name="language">Language</param>
         /// <returns>Result in XML format</returns>
         public virtual string ExportResourcesToXml(Language language)
         {
             if (language == null)
-                throw new ArgumentNullException("language");
+                throw new ArgumentNullException(nameof(language));
             var sb = new StringBuilder();
             var stringWriter = new StringWriter(sb);
             var xmlWriter = new XmlTextWriter(stringWriter);
             xmlWriter.WriteStartDocument();
             xmlWriter.WriteStartElement("Language");
             xmlWriter.WriteAttributeString("Name", language.Name);
+            xmlWriter.WriteAttributeString("SupportedVersion", NopVersion.CurrentVersion);
 
 
             var resources = GetAllResources(language.Id);
@@ -352,10 +357,11 @@ namespace Nop.Services.Localization
         /// </summary>
         /// <param name="language">Language</param>
         /// <param name="xml">XML</param>
-        public virtual void ImportResourcesFromXml(Language language, string xml)
+        /// <param name="updateExistingResources">A value indicating whether to update existing resources</param>
+        public virtual void ImportResourcesFromXml(Language language, string xml, bool updateExistingResources = true)
         {
             if (language == null)
-                throw new ArgumentNullException("language");
+                throw new ArgumentNullException(nameof(language));
 
             if (String.IsNullOrEmpty(xml))
                 return;
@@ -387,8 +393,14 @@ namespace Nop.Services.Localization
                 pXmlPackage.Value = xml;
                 pXmlPackage.DbType = DbType.Xml;
 
+                var pUpdateExistingResources = _dataProvider.GetParameter();
+                pUpdateExistingResources.ParameterName = "UpdateExistingResources";
+                pUpdateExistingResources.Value = updateExistingResources;
+                pUpdateExistingResources.DbType = DbType.Boolean;
+
                 //long-running query. specify timeout (600 seconds)
-                _dbContext.ExecuteSqlCommand("EXEC [LanguagePackImport] @LanguageId, @XmlPackage", false, 600, pLanguageId, pXmlPackage);
+                _dbContext.ExecuteSqlCommand("EXEC [LanguagePackImport] @LanguageId, @XmlPackage, @UpdateExistingResources", 
+                    false, 600, pLanguageId, pXmlPackage, pUpdateExistingResources);
             }
             else
             {
@@ -412,7 +424,12 @@ namespace Nop.Services.Localization
                     //let's bulk insert
                     var resource = language.LocaleStringResources.FirstOrDefault(x => x.ResourceName.Equals(name, StringComparison.InvariantCultureIgnoreCase));
                     if (resource != null)
-                        resource.ResourceValue = value;
+                    {
+                        if (updateExistingResources)
+                        {
+                            resource.ResourceValue = value;
+                        }
+                    }
                     else
                     {
                         language.LocaleStringResources.Add(
